@@ -1,5 +1,5 @@
 # sentiment-rnn
-RNN+LSTMの極性判定。
+Deeplearning4jを使った極性判定の学習プログラム。RNN+LSTMモデル。Word2Vecを入力、positive/negativeを出力。
 
 ## Requirements
 - Maven 3.0
