@@ -53,23 +53,27 @@ public class SentimentRecurrentTrainEarlyStopCmd {
     WordVectors wvec = WordVectorSerializer.loadTxtVectors(new File(args[0]));
     int numInputs   = wvec.lookupTable().layerSize();
     int numOutputs  = 2; // FIXME positive or negative
-    int batchSize   = 100;
-    int iterations  = 5;
+    int batchSize   = 16;//100;
+    int testBatch   = 64;
     int nEpochs     = 5000;
-    int thresEpochs = 5;
-    int listenfreq  = batchSize/10;
+    int thresEpochs = 10;
+    double minImprovement = 1e-5;
+    int listenfreq  = 10;
 
     MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder()
         .seed(7485)
-        .iterations(iterations)
+        //.updater(Updater.RMSPROP)
+        .updater(Updater.ADADELTA)
+        //.learningRate(0.001) //RMSPROP
+        //.rmsDecay(0.90) //RMSPROP
+        .rho(0.95) //ADADELTA
+        .epsilon(1e-5) //1e-8 //ALL
         .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
-        .learningRate(0.0018)
-        .updater(Updater.RMSPROP)
-        .regularization(true)
-        .l2(1e-5)
         .weightInit(WeightInit.XAVIER)
         .gradientNormalization(GradientNormalization.ClipElementWiseAbsoluteValue)
         .gradientNormalizationThreshold(1.0)
+        //.regularization(true)
+        //.l2(1e-5)
         .list()
         .layer(0, new GravesLSTM.Builder()
             .nIn(numInputs).nOut(numInputs)
@@ -89,14 +93,15 @@ public class SentimentRecurrentTrainEarlyStopCmd {
 
     LOG.info("Starting training");
     DataSetIterator train = new AsyncDataSetIterator(
-        new SentimentRecurrentIterator(args[1],wvec,batchSize,400,true),2);
+        new SentimentRecurrentIterator(args[1],wvec,batchSize,300,true),2);
     DataSetIterator test = new AsyncDataSetIterator(
-        new SentimentRecurrentIterator(args[1],wvec,100,400,false),2);
+        new SentimentRecurrentIterator(args[1],wvec,testBatch,300,false),2);
 
     EarlyStoppingModelSaver<MultiLayerNetwork> saver = new LocalFileModelSaver(args[2]);//new InMemoryModelSaver<>();
     EarlyStoppingConfiguration<MultiLayerNetwork> esConf = new EarlyStoppingConfiguration.Builder<MultiLayerNetwork>()
-        .epochTerminationConditions(new MaxEpochsTerminationCondition(nEpochs),
-                new ScoreImprovementEpochTerminationCondition(thresEpochs))
+        .epochTerminationConditions(
+            new MaxEpochsTerminationCondition(nEpochs),
+            new ScoreImprovementEpochTerminationCondition(thresEpochs,minImprovement))
         .scoreCalculator(new DataSetLossCalculator(test, true))
         .modelSaver(saver)
         .build();
@@ -109,9 +114,9 @@ public class SentimentRecurrentTrainEarlyStopCmd {
     LOG.info("Best epoch number: " + result.getBestModelEpoch());
     LOG.info("Score at best epoch: " + result.getBestModelScore());
 
-    LOG.info("Save model");
-    MultiLayerNetwork best = result.getBestModel();
-    ModelSerializer.writeModel(best, new FileOutputStream(args[2]+"/sentiment.rnn.es.model"), true);
+    //LOG.info("Save model");
+    //MultiLayerNetwork best = result.getBestModel();
+    //ModelSerializer.writeModel(best, new FileOutputStream(args[2]+"/sentiment.rnn.es.model"), true);
 
   }
 }

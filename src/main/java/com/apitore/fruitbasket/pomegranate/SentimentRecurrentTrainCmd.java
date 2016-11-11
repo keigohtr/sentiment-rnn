@@ -46,21 +46,24 @@ public class SentimentRecurrentTrainCmd {
     WordVectors wvec = WordVectorSerializer.loadTxtVectors(new File(args[0]));
     int numInputs   = wvec.lookupTable().layerSize();
     int numOutputs  = 2; // FIXME positive or negative
-    int batchSize   = 50;
-    int iterations  = 5;
-    int nEpochs     = 5;
-    int listenfreq  = batchSize/10;
+    int batchSize   = 16;//100;
+    int testBatch   = 64;
+    int nEpochs     = 5000;
+    int listenfreq  = 10;
 
     MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder()
         .seed(7485)
-        .iterations(iterations)
+        .updater(Updater.RMSPROP) //ADADELTA
+        .learningRate(0.001) //RMSPROP
+        .rmsDecay(0.90) //RMSPROP
+        //.rho(0.95) //ADADELTA
+        .epsilon(1e-8) //ALL
         .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
-        .learningRate(0.0018)
-        .updater(Updater.RMSPROP)
-        .regularization(true).l2(1e-5)
         .weightInit(WeightInit.XAVIER)
         .gradientNormalization(GradientNormalization.ClipElementWiseAbsoluteValue)
         .gradientNormalizationThreshold(1.0)
+        //.regularization(true)
+        //.l2(1e-5)
         .list()
         .layer(0, new GravesLSTM.Builder()
             .nIn(numInputs).nOut(numInputs)
@@ -80,9 +83,9 @@ public class SentimentRecurrentTrainCmd {
 
     LOG.info("Starting training");
     DataSetIterator train = new AsyncDataSetIterator(
-        new SentimentRecurrentIterator(args[1],wvec,batchSize,400,true),2);
+        new SentimentRecurrentIterator(args[1],wvec,batchSize,300,true),2);
     DataSetIterator test = new AsyncDataSetIterator(
-        new SentimentRecurrentIterator(args[1],wvec,100,400,false),2);
+        new SentimentRecurrentIterator(args[1],wvec,testBatch,300,false),2);
     for( int i=0; i<nEpochs; i++ ){
       model.fit(train);
       train.reset();

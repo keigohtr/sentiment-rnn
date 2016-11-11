@@ -2,11 +2,12 @@ package org.deeplearning4j.examples.recurrent.word2vecsentiment;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.log4j.Logger;
 import org.deeplearning4j.text.tokenization.tokenizerfactory.DefaultTokenizerFactory;
 import org.deeplearning4j.text.tokenization.tokenizerfactory.TokenizerFactory;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.deeplearning4j.models.embeddings.wordvectors.WordVectors;
-import org.deeplearning4j.text.tokenization.tokenizer.preprocessor.CommonPreprocessor;
+import org.deeplearning4j.text.tokenization.tokenizer.preprocessor.LowCasePreProcessor;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.api.DataSetPreProcessor;
@@ -37,6 +38,8 @@ public class SentimentRecurrentIterator implements DataSetIterator {
    *
    */
   private static final long serialVersionUID = 3720823704002518845L;
+
+  private static final Logger LOG = Logger.getLogger(SentimentRecurrentIterator.class);
 
   private final WordVectors wordVectors;
   private final int batchSize;
@@ -78,7 +81,7 @@ public class SentimentRecurrentIterator implements DataSetIterator {
     this.truncateLength = truncateLength;
 
     tokenizerFactory = new DefaultTokenizerFactory();
-    tokenizerFactory.setTokenPreProcessor(new CommonPreprocessor());
+    tokenizerFactory.setTokenPreProcessor(new LowCasePreProcessor());
   }
 
 
@@ -121,7 +124,9 @@ public class SentimentRecurrentIterator implements DataSetIterator {
       List<String> tokensFiltered = new ArrayList<>();
       for(String t : tokens ){
         if(wordVectors.hasWord(t)) tokensFiltered.add(t);
+        //else LOG.info(t);
       }
+      if (tokensFiltered.isEmpty()) LOG.info("Invalid text: "+s);
       allTokens.add(tokensFiltered);
       maxLength = Math.max(maxLength,tokensFiltered.size());
     }
